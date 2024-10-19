@@ -1,0 +1,122 @@
+---
+title: "Homework MP1"
+output: html_document
+date: "2024-10-19"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+library(readxl)
+library(forecast)
+```
+```{r}
+library(tseries)
+library(TTR)
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+```
+```{r}
+flightVolume <- read.csv("/Users/kiannazem/Downloads/flightVolume.csv")
+```
+
+```{r}
+flight_ts <- ts(flightVolume$reslong, start = c(1971, 01), frequency = 12)
+```
+```{r}
+str(flight_ts)
+start(flight_ts)
+end(flight_ts)
+length(flight_ts)
+```
+```{r}
+plot(flight_ts, main="Flight Volume Time Series", ylab="Volume", xlab="Time")
+```
+Hypothesis: Flight volume data likely has an underlying trend, as flights may increase or decrease over time depending on economic factors, policy changes, and global events. Also, it is very likely that the flight volume data has seasonality, as certain months like holiday seasons might have more flights than others. I hypothesize that the data will have both a trend and seasonal fluctuations.
+
+```{r}
+start(flight_ts)
+end(flight_ts)
+length(flight_ts)
+```
+```{r}
+acf(flight_ts, main="ACF of reslong Data")
+```
+
+```{r}
+decomp_result <- stl(flight_ts, s.window = "periodic")
+plot(decomp_result)
+```
+The ACF plot and the decomposition plot both suggest that the dataset has both trend and seasonality. The seasonality is strong and repeats consistently over time, which is shown by both the ACF spikes and the clear seasonal chart in the decomposition. The trend component reveals long-term changes in the flight volume, with the data showing both growth and then a slight decline over the years.
+```{r}
+naive_forecast <- naive(flight_ts, h=12)
+plot(naive_forecast, main="Naive Forecast", ylab="Flight Volume", xlab="Time")
+```
+The Naive forecast assumes that the future will be exactly like the most recent past so it projects the last observed value straight into the future without accounting for trends or seasonality. This results in a flat line, with confidence intervals that widen to account for uncertainty. This doesn’t seem suitable for my dataset since it ignores important seasonal patterns and trends.
+```{r}
+average_forecast <- meanf(flight_ts, h=12)
+plot(average_forecast, main="Average Forecast", ylab="Flight Volume", xlab="Time")
+```
+The average forecast assumes that future flight volumes will remain the same as the historical average. It doesn’t account for any trend or seasonality, so it gives a flat prediction line once again. The blue shaded area shows possible deviations from the average. This model doesn’t seem to capture the real nature of the data, since it ignores the seasonal fluctuations and the longer-term trend.
+```{r}
+ets_model <- ets(flight_ts)
+ets_forecast <- forecast(ets_model, h=12)
+plot(ets_forecast, main="ETS Forecast", ylab="Flight Volume", xlab="Time")
+```
+The exponential smoothing forecast incorporates both trend and seasonality, but it’s more adaptable to changes in these patterns. Like the Holt-Winters model, the ETS forecast shows that future volumes are expected to follow the same seasonal patterns. The confidence intervals are represented by the blue shaded area, giving an idea of the uncertainty in the predictions.
+
+```{r}
+hw_forecast <- HoltWinters(flight_ts)
+plot(forecast(hw_forecast, h=12), main="Holt-Winters Forecast", ylab="Flight Volume", xlab="Time")
+```
+The Holt-Winters forecast accounts for both the trend and seasonality. The model shows that flight volumes are expected to continue fluctuating with the same seasonal patterns, but there's not really a clear trend. The blue shaded area shows the confidence intervals which tells us that the range within which future flight volumes are expected to fall.
+```{r}
+additive_decomp <- decompose(flight_ts, type = "additive")
+multiplicative_decomp <- decompose(flight_ts, type = "multiplicative")
+```
+
+```{r}
+plot(additive_decomp)
+plot(multiplicative_decomp)
+```
+The observed flight volume data shows both fluctuations and longer-term changes, with regular peaks at certain times which are signals of seasonality and an overall increase that levels off in more recent years. The trend component indicates a gradual increase in flight volume over several decades, followed by a slight decline in recent years. The seasonal component confirms that there are regular, repeating patterns in the data—likely linked to travel seasons. These seasonal effects are more pronounced when the overall trend is higher. The random component shows the irregular fluctuations that can’t be explained by trends or seasonality.
+```{r}
+accuracy_naive <- accuracy(naive_forecast)
+accuracy_avg <- accuracy(average_forecast)
+accuracy_ets <- accuracy(ets_forecast)
+accuracy_hw <- accuracy(forecast(hw_forecast))
+
+print("Naive Forecast Accuracy:")
+print(accuracy_naive)
+
+print("Average Forecast Accuracy:")
+print(accuracy_avg)
+
+print("ETS Forecast Accuracy:")
+print(accuracy_ets)
+
+print("Holt-Winters Forecast Accuracy:")
+print(accuracy_hw)
+```
+The exponential smoothing model is the most accurate based on RMSE, MAE, and MAPE. I would use this model for forecasting as it captures both trend and seasonality effectively. The Holt-Winters model is also a strong contender, especially to emphasize the seasonality. It’s slightly less accurate than ETS but still performs well. In this particular case, I will go with the exponential smoothing model as my forecast, given the accuracy measure above.
+```{r}
+forecast(ets_forecast, h=12)
+```
+I feel confident in the Exponential Smoothing forecast because it effectively captures both the trend and seasonality in my flight volume data. The model adapts to recent changes in the data, giving more weight to recent patterns, which is crucial in an industry that can experience fluctuations. It also performed best in terms of accuracy, with the lowest RMSE and MAE, indicating it provides the most reliable predictions. Additionally, the forecast includes confidence intervals, giving me a range of likely outcomes, which further strengthens my confidence in its predictions.
